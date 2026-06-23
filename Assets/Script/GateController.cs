@@ -1,46 +1,81 @@
 using UnityEngine;
-using UnityEngine.SceneManagement; // Wajib untuk berpindah level
+using UnityEngine.SceneManagement; 
+using TMPro; 
+using UnityEngine.InputSystem; 
 
 public class GateController : MonoBehaviour
 {
     [Header("Pengaturan Kunci")]
-    public int jumlahKunciDibutuhkan = 2; // Sesuai permintaan Level 2
-    private int kunciTerkumpul = 0;
+    public int jumlahKunciDibutuhkan = 2;
+    
+    public int kunciTerkumpul { get; private set; } = 0; 
 
-    [Header("Visual Landmark (Ganti Bola Merah)")]
-    // Seret objek Landmark visual (Portal/Altar menyala) Anda ke sini di Inspector
+    [Header("Visual Landmark")]
     public GameObject visualLandmarkObject;
+    public GameObject completionEffect;
 
-    // Tambahkan objek Particle System jika ingin efek pilar cahaya tambahan
-    public GameObject completionEffect; 
+    [Header("Pengaturan UI Notifikasi")]
+    public TextMeshProUGUI teksNotifikasi; 
+
+    [Header("Pengaturan UI Selesai")]
+    public GameObject panelLevelSelesai;
+    public GameObject background;
+    
+    [Header("Pengaturan Pindah Scene")]
+    public string namaSceneLevelSelanjutnya = "Level2";
+    public string namaSceneMenuLevel = "MenuLevel";
+    public string namaSceneMainMenu = "MainMenu";
 
     private bool playerDiGerbang = false;
 
     private void Start()
-    {
-        // Pastikan landmark dan efek mati saat game mulai
+    {        
         if (visualLandmarkObject != null) visualLandmarkObject.SetActive(false);
         if (completionEffect != null) completionEffect.SetActive(false);
+        if (teksNotifikasi != null) teksNotifikasi.text = "";
+        if (panelLevelSelesai != null) panelLevelSelesai.SetActive(false);
+        if (background != null) background.SetActive(false);
+    }
+
+    private void Update()
+    {
+        
+        if (playerDiGerbang && kunciTerkumpul >= jumlahKunciDibutuhkan)
+        {
+            if (Keyboard.current.fKey.wasPressedThisFrame)
+            {
+                SelesaikanLevel();
+            }
+        }
     }
 
     public void TambahKunci()
     {
         kunciTerkumpul++;
         Debug.Log("Kunci didapat! Total saat ini: " + kunciTerkumpul + " / " + jumlahKunciDibutuhkan);
+        
+        UIManager uiManager = FindAnyObjectByType<UIManager>();
+        if (uiManager != null)
+        {
+            uiManager.UpdateUI();
+        }
 
-        // --- JIKA KUNCI SUDAH 2, AKTIFKAN VISUAL LANDMARK ---
         if (kunciTerkumpul >= jumlahKunciDibutuhkan)
         {
             AktifkanVisualLandmark();
         }
     }
 
-    private void Update()
+    private void AktifkanVisualLandmark()
     {
-        // Player di area, kunci lengkap, tekan F
-        if (playerDiGerbang && kunciTerkumpul >= jumlahKunciDibutuhkan && UnityEngine.InputSystem.Keyboard.current.fKey.wasPressedThisFrame)
+        if (visualLandmarkObject != null) visualLandmarkObject.SetActive(true);
+        if (completionEffect != null) completionEffect.SetActive(true);
+        Debug.Log("Portal Selesai Level Aktif!");
+        
+        if (teksNotifikasi != null)
         {
-            SelesaikanLevel();
+            teksNotifikasi.text = "Semua kunci terkumpul! Pergi ke area merah untuk menyelesaikan level.";
+            teksNotifikasi.color = Color.yellow;
         }
     }
 
@@ -49,12 +84,23 @@ public class GateController : MonoBehaviour
         if (other.CompareTag("Player"))
         {
             playerDiGerbang = true;
-            Debug.Log("Berdiri di area penyelesaikan level.");
-
+            
             if (kunciTerkumpul < jumlahKunciDibutuhkan)
             {
                 int sisa = jumlahKunciDibutuhkan - kunciTerkumpul;
-                Debug.Log("Cari " + sisa + " kunci lagi untuk membuka landmark!");
+                if (teksNotifikasi != null)
+                {
+                    teksNotifikasi.text = "Cari " + sisa + " kunci lagi untuk membuka landmark!";
+                    teksNotifikasi.color = Color.red;
+                }
+            }
+            else
+            {
+                if (teksNotifikasi != null)
+                {
+                    teksNotifikasi.text = "Tekan F untuk menyelesaikan level!";
+                    teksNotifikasi.color = Color.green;
+                }
             }
         }
     }
@@ -64,22 +110,54 @@ public class GateController : MonoBehaviour
         if (other.CompareTag("Player"))
         {
             playerDiGerbang = false;
-        }
-    }
 
-    // Fungsi menyalakan efek/portal (menggantikan bola merah statis)
-    private void AktifkanVisualLandmark()
-    {
-        if (visualLandmarkObject != null) visualLandmarkObject.SetActive(true);
-        if (completionEffect != null) completionEffect.SetActive(true);
-        Debug.Log("Portal Selesai Level Aktif! Silakan menuju area dan tekan F.");
+            if (teksNotifikasi != null)
+            {                
+                if (kunciTerkumpul >= jumlahKunciDibutuhkan)
+                {
+                    teksNotifikasi.text = "Pergi ke area merah untuk menyelesaikan level.";
+                    teksNotifikasi.color = Color.yellow;
+                }
+                else
+                {
+                    teksNotifikasi.text = ""; 
+                }
+            }
+        }
     }
 
     private void SelesaikanLevel()
     {
-        Debug.Log("Selamat! Level Selesai. Memuat Level Berikutnya...");
+        Debug.Log("Menampilkan UI Level Selesai...");        
+        if (panelLevelSelesai != null)
+        {            
+            panelLevelSelesai.SetActive(true);
+            background.SetActive(true);
+                        
+            Time.timeScale = 0f; 
+            
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+        }
         
-        // Masukkan nama Scene Level 3 atau Scene Main Menu Anda di bawah ini:
-        // SceneManager.LoadScene("NamaSceneLevel3");
+        if (teksNotifikasi != null) teksNotifikasi.text = "";
+    }
+
+    public void TombolLevelSelanjutnya()
+    {
+        Time.timeScale = 1f; 
+        SceneManager.LoadScene(namaSceneLevelSelanjutnya);
+    }
+
+    public void TombolMenuLevel()
+    {
+        Time.timeScale = 1f;
+        SceneManager.LoadScene(namaSceneMenuLevel);
+    }
+
+    public void TombolMainMenu()
+    {
+        Time.timeScale = 1f;
+        SceneManager.LoadScene(namaSceneMainMenu);
     }
 }
