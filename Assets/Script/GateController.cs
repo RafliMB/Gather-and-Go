@@ -20,6 +20,10 @@ public class GateController : MonoBehaviour
     [Header("Pengaturan UI Selesai")]
     public GameObject panelLevelSelesai;
     public GameObject background;
+
+    [Header("Pengaturan UI Gameplay (HUD)")]
+    [Tooltip("Masukkan GameObject yang menampung Teks Kunci dan Tombol Menu agar bisa disembunyikan saat tamat")]
+    public GameObject gameplayHUD;
     
     [Header("Pengaturan Pindah Scene")]
     public string namaSceneLevelSelanjutnya = "Level2";
@@ -35,6 +39,8 @@ public class GateController : MonoBehaviour
         if (teksNotifikasi != null) teksNotifikasi.text = "";
         if (panelLevelSelesai != null) panelLevelSelesai.SetActive(false);
         if (background != null) background.SetActive(false);
+
+        if (gameplayHUD != null) gameplayHUD.SetActive(true);
     }
 
     private void Update()
@@ -128,7 +134,13 @@ public class GateController : MonoBehaviour
 
     private void SelesaikanLevel()
     {
-        Debug.Log("Menampilkan UI Level Selesai...");        
+        Debug.Log("Menampilkan UI Level Selesai...");  
+
+        if (gameplayHUD != null)
+        {
+            gameplayHUD.SetActive(false); 
+        }
+        
         if (panelLevelSelesai != null)
         {            
             panelLevelSelesai.SetActive(true);
@@ -141,6 +153,14 @@ public class GateController : MonoBehaviour
         }
         
         if (teksNotifikasi != null) teksNotifikasi.text = "";
+    }
+
+    public void TombolUlangiLevel()
+    {
+        Time.timeScale = 1f;
+        
+        string sceneSekarang = SceneManager.GetActiveScene().name;
+        SceneManager.LoadScene(sceneSekarang);
     }
 
     public void TombolLevelSelanjutnya()
