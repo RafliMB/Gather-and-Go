@@ -5,6 +5,21 @@ using UnityEngine.InputSystem;
 
 public class GateController : MonoBehaviour
 {
+    [Header("Pengaturan Progress Level")]
+    [Tooltip("Isi dengan angka level ini. Misal ini Level 1, maka isi 1.")]
+    public int levelSaatIni = 1;
+
+    [Header("Pengaturan Waktu & Bintang")]
+    public float waktuMaksimal = 120f; 
+    public float batasWaktuBintang3 = 60f; 
+    public float batasWaktuBintang2 = 30f; 
+    
+    public TextMeshProUGUI teksTimerHUD; 
+    public GameObject[] bintangMenyala; 
+
+    private float sisaWaktu;
+    private bool levelSudahSelesai = false;
+
     [Header("Pengaturan Kunci")]
     public int jumlahKunciDibutuhkan = 2;
     
@@ -22,7 +37,6 @@ public class GateController : MonoBehaviour
     public GameObject background;
 
     [Header("Pengaturan UI Gameplay (HUD)")]
-    [Tooltip("Masukkan GameObject yang menampung Teks Kunci dan Tombol Menu agar bisa disembunyikan saat tamat")]
     public GameObject gameplayHUD;
     
     [Header("Pengaturan Pindah Scene")]
@@ -39,19 +53,45 @@ public class GateController : MonoBehaviour
         if (teksNotifikasi != null) teksNotifikasi.text = "";
         if (panelLevelSelesai != null) panelLevelSelesai.SetActive(false);
         if (background != null) background.SetActive(false);
-
         if (gameplayHUD != null) gameplayHUD.SetActive(true);
+
+        sisaWaktu = waktuMaksimal;
+        foreach (GameObject bintang in bintangMenyala)
+        {
+            if (bintang != null) bintang.SetActive(false);
+        }
     }
 
     private void Update()
     {
-        
-        if (playerDiGerbang && kunciTerkumpul >= jumlahKunciDibutuhkan)
+        if (!levelSudahSelesai && sisaWaktu > 0)
+        {
+            sisaWaktu -= Time.deltaTime;
+            UpdateTeksTimer();
+
+            if (sisaWaktu <= 0)
+            {
+                sisaWaktu = 0;
+                // Logika Game Over bisa ditaruh di sini
+            }
+        }
+
+        if (playerDiGerbang && kunciTerkumpul >= jumlahKunciDibutuhkan && !levelSudahSelesai)
         {
             if (Keyboard.current.fKey.wasPressedThisFrame)
             {
                 SelesaikanLevel();
             }
+        }
+    }
+
+    private void UpdateTeksTimer()
+    {
+        if (teksTimerHUD != null)
+        {
+            int menit = Mathf.FloorToInt(sisaWaktu / 60);
+            int detik = Mathf.FloorToInt(sisaWaktu % 60);
+            teksTimerHUD.text = string.Format("{0:00}:{1:00}", menit, detik);
         }
     }
 
@@ -135,16 +175,59 @@ public class GateController : MonoBehaviour
     private void SelesaikanLevel()
     {
         Debug.Log("Menampilkan UI Level Selesai...");  
+        
+        // Menghentikan hitung mundur timer
+        levelSudahSelesai = true;
 
+        // 1. Simpan Progress Level Terbuka
+        int levelTerbuka = PlayerPrefs.GetInt("LevelTerbuka", 1);
+        if (levelSaatIni >= levelTerbuka)
+        {
+            PlayerPrefs.SetInt("LevelTerbuka", levelSaatIni + 1);
+            Debug.Log("Level " + (levelSaatIni + 1) + " Terbuka!");
+        }
+        
+        // 2. Hitung dan Simpan Perolehan Bintang
+        int jumlahBintang = 1; 
+        if (sisaWaktu >= batasWaktuBintang3)
+        {
+            jumlahBintang = 3;
+        }
+        else if (sisaWaktu >= batasWaktuBintang2)
+        {
+            jumlahBintang = 2;
+        }
+
+        string namaKeyBintang = "Level" + levelSaatIni + "_Bintang";
+        int bintangTersimpan = PlayerPrefs.GetInt(namaKeyBintang, 0);
+        if (jumlahBintang > bintangTersimpan)
+        {
+            PlayerPrefs.SetInt(namaKeyBintang, jumlahBintang);
+        }
+        
+        // Simpan semua PlayerPrefs sekaligus
+        PlayerPrefs.Save();
+
+        // 3. Matikan UI Gameplay
         if (gameplayHUD != null)
         {
             gameplayHUD.SetActive(false); 
         }
         
+        // 4. Nyalakan Panel Selesai & Bintang
         if (panelLevelSelesai != null)
         {            
             panelLevelSelesai.SetActive(true);
-            background.SetActive(true);
+            if (background != null) background.SetActive(true);
+            
+            // Nyalakan bintang sesuai jumlah
+            for (int i = 0; i < jumlahBintang; i++)
+            {
+                if (i < bintangMenyala.Length && bintangMenyala[i] != null)
+                {
+                    bintangMenyala[i].SetActive(true);
+                }
+            }
                         
             Time.timeScale = 0f; 
             
